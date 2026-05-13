@@ -1221,6 +1221,8 @@ Ghoul2 Insert End
 */
 
 extern	cvar_t	*r_environmentMapping;
+
+extern  cvar_t  *r_novertex_colors;
 //====================================================================
 
 

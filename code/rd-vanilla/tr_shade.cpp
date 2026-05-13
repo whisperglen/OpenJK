@@ -1370,165 +1370,177 @@ static void ComputeColors( shaderStage_t *pStage, alphaGen_t forceAlphaGen, colo
 {
 	int i;
 
-	if ( tess.shader != tr.projectionShadowShader && tess.shader != tr.shadowShader &&
-			( backEnd.currentEntity->e.renderfx & (RF_DISINTEGRATE1|RF_DISINTEGRATE2)))
-	{
-		RB_CalcDisintegrateColors( (unsigned char *)tess.svars.colors, pStage->rgbGen );
-		RB_CalcDisintegrateVertDeform();
+	bool colorskip = !backEnd.projection2D && r_novertex_colors->integer;
 
-		// We've done some custom alpha and color stuff, so we can skip the rest.  Let it do fog though
-		forceRGBGen = CGEN_SKIP;
-		forceAlphaGen = AGEN_SKIP;
+	if(!colorskip)
+	{
+		if ( tess.shader != tr.projectionShadowShader && tess.shader != tr.shadowShader &&
+				( backEnd.currentEntity->e.renderfx & (RF_DISINTEGRATE1|RF_DISINTEGRATE2)))
+		{
+			RB_CalcDisintegrateColors( (unsigned char *)tess.svars.colors, pStage->rgbGen );
+			RB_CalcDisintegrateVertDeform();
+
+			// We've done some custom alpha and color stuff, so we can skip the rest.  Let it do fog though
+			forceRGBGen = CGEN_SKIP;
+			forceAlphaGen = AGEN_SKIP;
+		}
 	}
 
 	//
 	// rgbGen
 	//
-	if ( !forceRGBGen )
+	if (colorskip)
 	{
-		forceRGBGen = pStage->rgbGen;
+		memset(tess.svars.colors, 0xff, tess.numVertexes * 4);
 	}
-
-	if ( backEnd.currentEntity->e.renderfx & RF_VOLUMETRIC ) // does not work for rotated models, technically, this should also be a CGEN type, but that would entail adding new shader commands....which is too much work for one thing
+	else
 	{
-		int			i;
-		float		*normal, dot;
-		unsigned char *color;
-		int			numVertexes;
-
-		normal = tess.normal[0];
-		color = tess.svars.colors[0];
-
-		numVertexes = tess.numVertexes;
-
-		for ( i = 0 ; i < numVertexes ; i++, normal += 4, color += 4)
+		if ( !forceRGBGen )
 		{
-			dot = DotProduct( normal, backEnd.refdef.viewaxis[0] );
-
-			dot *= dot * dot * dot;
-
-			if ( dot < 0.2f ) // so low, so just clamp it
-			{
-				dot = 0.0f;
-			}
-
-			color[0] = color[1] = color[2] = color[3] = Q_ftol( backEnd.currentEntity->e.shaderRGBA[0] * (1-dot) );
+			forceRGBGen = pStage->rgbGen;
 		}
 
-		forceRGBGen = CGEN_SKIP;
-		forceAlphaGen = AGEN_SKIP;
-	}
+		if ( backEnd.currentEntity->e.renderfx & RF_VOLUMETRIC ) // does not work for rotated models, technically, this should also be a CGEN type, but that would entail adding new shader commands....which is too much work for one thing
+		{
+			int			i;
+			float		*normal, dot;
+			unsigned char *color;
+			int			numVertexes;
 
-	if ( !forceAlphaGen )	//set this up so we can override below
-	{
-		forceAlphaGen = pStage->alphaGen;
-	}
+			normal = tess.normal[0];
+			color = tess.svars.colors[0];
 
-	switch ( forceRGBGen )
-	{
-		case CGEN_SKIP:
-			break;
-		case CGEN_IDENTITY:
-			memset( tess.svars.colors, 0xff, tess.numVertexes * 4 );
-			break;
-		default:
-		case CGEN_IDENTITY_LIGHTING:
-			memset( tess.svars.colors, tr.identityLightByte, tess.numVertexes * 4 );
-			break;
-		case CGEN_LIGHTING_DIFFUSE:
-			RB_CalcDiffuseColor( ( unsigned char * ) tess.svars.colors );
-			break;
-		case CGEN_LIGHTING_DIFFUSE_ENTITY:
-			RB_CalcDiffuseEntityColor( ( unsigned char * ) tess.svars.colors );
+			numVertexes = tess.numVertexes;
 
-			if ( forceAlphaGen == AGEN_IDENTITY &&
-				 backEnd.currentEntity->e.shaderRGBA[3] == 0xff
-				)
+			for ( i = 0 ; i < numVertexes ; i++, normal += 4, color += 4)
 			{
-				forceAlphaGen = AGEN_SKIP;	//already got it in this set since it does all 4 components
+				dot = DotProduct( normal, backEnd.refdef.viewaxis[0] );
+
+				dot *= dot * dot * dot;
+
+				if ( dot < 0.2f ) // so low, so just clamp it
+				{
+					dot = 0.0f;
+				}
+
+				color[0] = color[1] = color[2] = color[3] = Q_ftol( backEnd.currentEntity->e.shaderRGBA[0] * (1-dot) );
 			}
-			break;
-		case CGEN_EXACT_VERTEX:
-			memcpy( tess.svars.colors, tess.vertexColors, tess.numVertexes * sizeof( tess.vertexColors[0] ) );
-			break;
-		case CGEN_CONST:
-			for ( i = 0; i < tess.numVertexes; i++ ) {
-				byteAlias_t *baDest = (byteAlias_t *)&tess.svars.colors[i],
-					*baSource = (byteAlias_t *)&pStage->constantColor;
-				baDest->i = baSource->i;
-			}
-			break;
-		case CGEN_VERTEX:
-			if ( tr.identityLight == 1 )
-			{
+
+			forceRGBGen = CGEN_SKIP;
+			forceAlphaGen = AGEN_SKIP;
+		}
+
+		if ( !forceAlphaGen )	//set this up so we can override below
+		{
+			forceAlphaGen = pStage->alphaGen;
+		}
+
+		switch ( forceRGBGen )
+		{
+			case CGEN_SKIP:
+				break;
+			case CGEN_IDENTITY:
+				memset( tess.svars.colors, 0xff, tess.numVertexes * 4 );
+				break;
+			default:
+			case CGEN_IDENTITY_LIGHTING:
+				memset( tess.svars.colors, tr.identityLightByte, tess.numVertexes * 4 );
+				break;
+			case CGEN_LIGHTING_DIFFUSE:
+				RB_CalcDiffuseColor( ( unsigned char * ) tess.svars.colors );
+				break;
+			case CGEN_LIGHTING_DIFFUSE_ENTITY:
+				RB_CalcDiffuseEntityColor( ( unsigned char * ) tess.svars.colors );
+
+				if ( forceAlphaGen == AGEN_IDENTITY &&
+					 backEnd.currentEntity->e.shaderRGBA[3] == 0xff
+					)
+				{
+					forceAlphaGen = AGEN_SKIP;	//already got it in this set since it does all 4 components
+				}
+				break;
+			case CGEN_EXACT_VERTEX:
 				memcpy( tess.svars.colors, tess.vertexColors, tess.numVertexes * sizeof( tess.vertexColors[0] ) );
-			}
-			else
-			{
-				for ( i = 0; i < tess.numVertexes; i++ )
-				{
-					tess.svars.colors[i][0] = tess.vertexColors[i][0] * tr.identityLight;
-					tess.svars.colors[i][1] = tess.vertexColors[i][1] * tr.identityLight;
-					tess.svars.colors[i][2] = tess.vertexColors[i][2] * tr.identityLight;
-					tess.svars.colors[i][3] = tess.vertexColors[i][3];
-				}
-			}
-			break;
-		case CGEN_ONE_MINUS_VERTEX:
-			if ( tr.identityLight == 1 )
-			{
-				for ( i = 0; i < tess.numVertexes; i++ )
-				{
-					tess.svars.colors[i][0] = 255 - tess.vertexColors[i][0];
-					tess.svars.colors[i][1] = 255 - tess.vertexColors[i][1];
-					tess.svars.colors[i][2] = 255 - tess.vertexColors[i][2];
-				}
-			}
-			else
-			{
-				for ( i = 0; i < tess.numVertexes; i++ )
-				{
-					tess.svars.colors[i][0] = ( 255 - tess.vertexColors[i][0] ) * tr.identityLight;
-					tess.svars.colors[i][1] = ( 255 - tess.vertexColors[i][1] ) * tr.identityLight;
-					tess.svars.colors[i][2] = ( 255 - tess.vertexColors[i][2] ) * tr.identityLight;
-				}
-			}
-			break;
-		case CGEN_FOG:
-			{
-				const fog_t *fog = tr.world->fogs + tess.fogNum;
-
+				break;
+			case CGEN_CONST:
 				for ( i = 0; i < tess.numVertexes; i++ ) {
-					byteAlias_t *ba = (byteAlias_t *)&tess.svars.colors[i];
-					ba->i = fog->colorInt;
+					byteAlias_t *baDest = (byteAlias_t *)&tess.svars.colors[i],
+						*baSource = (byteAlias_t *)&pStage->constantColor;
+					baDest->i = baSource->i;
 				}
-			}
-			break;
-		case CGEN_WAVEFORM:
-			RB_CalcWaveColor( &pStage->rgbWave, ( unsigned char * ) tess.svars.colors );
-			break;
-		case CGEN_ENTITY:
-			RB_CalcColorFromEntity( ( unsigned char * ) tess.svars.colors );
-			if ( forceAlphaGen == AGEN_IDENTITY &&
-				 backEnd.currentEntity->e.shaderRGBA[3] == 0xff
-				)
-			{
-				forceAlphaGen = AGEN_SKIP;	//already got it in this set since it does all 4 components
-			}
+				break;
+			case CGEN_VERTEX:
+				if ( tr.identityLight == 1 )
+				{
+					memcpy( tess.svars.colors, tess.vertexColors, tess.numVertexes * sizeof( tess.vertexColors[0] ) );
+				}
+				else
+				{
+					for ( i = 0; i < tess.numVertexes; i++ )
+					{
+						tess.svars.colors[i][0] = tess.vertexColors[i][0] * tr.identityLight;
+						tess.svars.colors[i][1] = tess.vertexColors[i][1] * tr.identityLight;
+						tess.svars.colors[i][2] = tess.vertexColors[i][2] * tr.identityLight;
+						tess.svars.colors[i][3] = tess.vertexColors[i][3];
+					}
+				}
+				break;
+			case CGEN_ONE_MINUS_VERTEX:
+				if ( tr.identityLight == 1 )
+				{
+					for ( i = 0; i < tess.numVertexes; i++ )
+					{
+						tess.svars.colors[i][0] = 255 - tess.vertexColors[i][0];
+						tess.svars.colors[i][1] = 255 - tess.vertexColors[i][1];
+						tess.svars.colors[i][2] = 255 - tess.vertexColors[i][2];
+					}
+				}
+				else
+				{
+					for ( i = 0; i < tess.numVertexes; i++ )
+					{
+						tess.svars.colors[i][0] = ( 255 - tess.vertexColors[i][0] ) * tr.identityLight;
+						tess.svars.colors[i][1] = ( 255 - tess.vertexColors[i][1] ) * tr.identityLight;
+						tess.svars.colors[i][2] = ( 255 - tess.vertexColors[i][2] ) * tr.identityLight;
+					}
+				}
+				break;
+			case CGEN_FOG:
+				{
+					const fog_t *fog = tr.world->fogs + tess.fogNum;
 
-			break;
-		case CGEN_ONE_MINUS_ENTITY:
-			RB_CalcColorFromOneMinusEntity( ( unsigned char * ) tess.svars.colors );
-			break;
-		case CGEN_LIGHTMAPSTYLE:
-			for ( i = 0; i < tess.numVertexes; i++ )
-			{
-				byteAlias_t *baDest = (byteAlias_t *)&tess.svars.colors[i],
-					*baSource = (byteAlias_t *)&styleColors[pStage->lightmapStyle];
-				baDest->ui = baSource->ui;
-			}
-			break;
+					for ( i = 0; i < tess.numVertexes; i++ ) {
+						byteAlias_t *ba = (byteAlias_t *)&tess.svars.colors[i];
+						ba->i = fog->colorInt;
+					}
+				}
+				break;
+			case CGEN_WAVEFORM:
+				RB_CalcWaveColor( &pStage->rgbWave, ( unsigned char * ) tess.svars.colors );
+				break;
+			case CGEN_ENTITY:
+				RB_CalcColorFromEntity( ( unsigned char * ) tess.svars.colors );
+				if ( forceAlphaGen == AGEN_IDENTITY &&
+					 backEnd.currentEntity->e.shaderRGBA[3] == 0xff
+					)
+				{
+					forceAlphaGen = AGEN_SKIP;	//already got it in this set since it does all 4 components
+				}
+
+				break;
+			case CGEN_ONE_MINUS_ENTITY:
+				RB_CalcColorFromOneMinusEntity( ( unsigned char * ) tess.svars.colors );
+				break;
+			case CGEN_LIGHTMAPSTYLE:
+				for ( i = 0; i < tess.numVertexes; i++ )
+				{
+					byteAlias_t *baDest = (byteAlias_t *)&tess.svars.colors[i],
+						*baSource = (byteAlias_t *)&styleColors[pStage->lightmapStyle];
+					baDest->ui = baSource->ui;
+				}
+				break;
 		}
+	}
 
 	//
 	// alphaGen
@@ -1624,28 +1636,31 @@ static void ComputeColors( shaderStage_t *pStage, alphaGen_t forceAlphaGen, colo
 		break;
 	default:
 		break;
-	}
+	} 
 
 	//
 	// fog adjustment for colors to fade out as fog increases
 	//
-	if ( tess.fogNum )
+	if (!colorskip)
 	{
-		switch ( pStage->adjustColorsForFog )
+		if ( tess.fogNum )
 		{
-		case ACFF_MODULATE_RGB:
-			RB_CalcModulateColorsByFog( ( unsigned char * ) tess.svars.colors );
-			break;
-		case ACFF_MODULATE_ALPHA:
-			RB_CalcModulateAlphasByFog( ( unsigned char * ) tess.svars.colors );
-			break;
-		case ACFF_MODULATE_RGBA:
-			RB_CalcModulateRGBAsByFog( ( unsigned char * ) tess.svars.colors );
-			break;
-		case ACFF_NONE:
-			break;
-		default:
-			break;
+			switch ( pStage->adjustColorsForFog )
+			{
+			case ACFF_MODULATE_RGB:
+				RB_CalcModulateColorsByFog( ( unsigned char * ) tess.svars.colors );
+				break;
+			case ACFF_MODULATE_ALPHA:
+				RB_CalcModulateAlphasByFog( ( unsigned char * ) tess.svars.colors );
+				break;
+			case ACFF_MODULATE_RGBA:
+				RB_CalcModulateRGBAsByFog( ( unsigned char * ) tess.svars.colors );
+				break;
+			case ACFF_NONE:
+				break;
+			default:
+				break;
+			}
 		}
 	}
 }
