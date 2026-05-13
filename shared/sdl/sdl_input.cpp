@@ -639,6 +639,8 @@ void IN_Init( void *windowData )
 		Com_DPrintf( "Using raw mouse input\n" );
 		SDL_SetHint( "SDL_MOUSE_RELATIVE_MODE_WARP", "0" );
 	}
+	in_mouse->modified = qfalse;
+
 	IN_DeactivateMouse( );
 
 	int appState = SDL_GetWindowFlags( SDL_window );
@@ -1154,6 +1156,22 @@ void IN_Frame (void) {
 	qboolean loading;
 
 	IN_JoyMove( );
+
+	if (in_mouse->modified)
+	{
+		IN_DeactivateMouse();
+
+		mouseAvailable = (qboolean)(in_mouse->value != 0);
+		if (in_mouse->integer == 2) {
+			Com_DPrintf("Not using raw mouse input\n");
+			SDL_SetHint("SDL_MOUSE_RELATIVE_MODE_WARP", "1");
+		}
+		else {
+			Com_DPrintf("Using raw mouse input\n");
+			SDL_SetHint("SDL_MOUSE_RELATIVE_MODE_WARP", "0");
+		}
+		in_mouse->modified = qfalse;
+	}
 
 	// If not DISCONNECTED (main menu) or ACTIVE (in game), we're loading
 	loading = (qboolean)( cls.state != CA_DISCONNECTED && cls.state != CA_ACTIVE );
