@@ -1665,6 +1665,71 @@ static void ComputeColors( shaderStage_t *pStage, alphaGen_t forceAlphaGen, colo
 	}
 }
 
+static void ComputeTexCoords_ClearTransforms()
+{
+	if (r_gpu_uv_transform->integer)
+	{
+		GLint matrixMode = 0;
+		GLint activeTexture = -1;
+		qglGetIntegerv(GL_MATRIX_MODE, &matrixMode);
+		qglGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
+
+		qglMatrixMode(GL_TEXTURE);
+
+		for (int i = 0; i < NUM_TEXTURE_BUNDLES; i++)
+		{
+			if(qglActiveTextureARB)
+				qglActiveTextureARB(GL_TEXTURE0_ARB + i);
+			qglLoadIdentity();
+		}
+
+		qglMatrixMode(matrixMode);
+		if(qglActiveTextureARB)
+			qglActiveTextureARB(activeTexture);
+	}
+}
+
+static float g_texcoords_mats[NUM_TEXTURE_BUNDLES][16];
+static int g_texcoords_index = 0;
+
+void RB_MultiplyTextureMatrix(float* mat)
+{
+	float* dest = g_texcoords_mats[g_texcoords_index];
+	const float *A = mat;
+	float B[16];
+
+	memcpy(B, dest, sizeof(B));
+
+	int i, j;
+	for (i = 0; i < 4; i++)
+	{
+		for (j = 0; j < 4; j++)
+		{
+			dest[i * 4 + j] =
+				A[0 * 4 + j] * B[i * 4 + 0] +
+				A[1 * 4 + j] * B[i * 4 + 1] +
+				A[2 * 4 + j] * B[i * 4 + 2] +
+				A[3 * 4 + j] * B[i * 4 + 3];
+		}
+	}
+}
+
+/*
+================
+MatrixIdentity4x4
+
+Clears a 16-element column-major matrix to the Identity matrix.
+================
+*/
+static void RB_TextureMatrixClear()
+{
+	float *m = g_texcoords_mats[g_texcoords_index];
+	m[0] = 1.0f; m[4] = 0.0f; m[8] = 0.0f; m[12] = 0.0f;
+	m[1] = 0.0f; m[5] = 1.0f; m[9] = 0.0f; m[13] = 0.0f;
+	m[2] = 0.0f; m[6] = 0.0f; m[10] = 1.0f; m[14] = 0.0f;
+	m[3] = 0.0f; m[7] = 0.0f; m[11] = 0.0f; m[15] = 1.0f;
+}
+
 /*
 ===============
 ComputeTexCoords
@@ -1677,6 +1742,11 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 	for ( b = 0; b < NUM_TEXTURE_BUNDLES; b++ ) {
 		int tm;
 
+		if (r_gpu_uv_transform->integer)
+		{
+			g_texcoords_index = b;
+			RB_TextureMatrixClear();
+		}
 		//
 		// generate the texture coordinates
 		//
@@ -1731,7 +1801,7 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 				memset( tess.svars.texcoords[b], 0, sizeof( float ) * 2 * tess.numVertexes );
 			break;
 		case TCGEN_BAD:
-			return;
+			goto compute_tex_end;
 		}
 
 		//
@@ -1784,6 +1854,29 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 				break;
 			}
 		}
+	}
+
+compute_tex_end:
+	if (r_gpu_uv_transform->integer)
+	{
+		GLint matrixMode = 0;
+		GLint activeTexture = -1;
+
+		qglGetIntegerv(GL_MATRIX_MODE, &matrixMode);
+		qglGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
+
+		qglMatrixMode(GL_TEXTURE);
+
+		for (b = 0; b < NUM_TEXTURE_BUNDLES; b++)
+		{
+			if (qglActiveTextureARB)
+				qglActiveTextureARB(GL_TEXTURE0_ARB + b);
+			qglLoadMatrixf(g_texcoords_mats[b]);
+		}
+
+		qglMatrixMode(matrixMode);
+		if(qglActiveTextureARB)
+			qglActiveTextureARB(activeTexture);
 	}
 }
 
@@ -2057,6 +2150,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 		qglFogfv(GL_FOG_COLOR, fog->parms.color);
 	}
 #endif
+
+	ComputeTexCoords_ClearTransforms();
 }
 
 /*

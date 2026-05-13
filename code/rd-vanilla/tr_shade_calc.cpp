@@ -825,6 +825,8 @@ void RB_CalcFogTexCoords( float *st ) {
 	vec3_t		localVec;
 	vec4_t		fogDistanceVector, fogDepthVector;
 
+	//if (r_gpu_uv_transform->integer) return;
+
 	fog = tr.world->fogs + tess.fogNum;
 
 	// all fogging distance is based on world Z units
@@ -906,6 +908,8 @@ void RB_CalcEnvironmentTexCoords( float *st )
 	vec3_t		viewer;
 	float		d;
 
+	//if (r_gpu_uv_transform->integer) return;
+
 	v = tess.xyz[0];
 	normal = tess.normal[0];
 
@@ -938,6 +942,8 @@ void RB_CalcTurbulentTexCoords( const waveForm_t *wf, float *st )
 	int i;
 	float now;
 
+	//if (r_gpu_uv_transform->integer) return;
+
 	now = ( wf->phase + backEnd.refdef.floatTime * wf->frequency );
 
 	for ( i = 0; i < tess.numVertexes; i++, st += 2 )
@@ -955,12 +961,25 @@ void RB_CalcTurbulentTexCoords( const waveForm_t *wf, float *st )
 */
 void RB_CalcScaleTexCoords( const float scale[2], float *st )
 {
-	int i;
-
-	for ( i = 0; i < tess.numVertexes; i++, st += 2 )
+	if(!r_gpu_uv_transform->integer)
 	{
-		st[0] *= scale[0];
-		st[1] *= scale[1];
+		int i;
+
+		for ( i = 0; i < tess.numVertexes; i++, st += 2 )
+		{
+			st[0] *= scale[0];
+			st[1] *= scale[1];
+		}
+	}
+	else
+	{
+		float matScale[16] = {
+			scale[0], 0.0f,     0.0f, 0.0f,
+			0.0f,     scale[1], 0.0f, 0.0f,
+			0.0f,     0.0f,     1.0f, 0.0f,
+			0.0f,     0.0f,     0.0f, 1.0f
+		};
+		RB_MultiplyTextureMatrix(matScale);
 	}
 }
 
@@ -981,10 +1000,25 @@ void RB_CalcScrollTexCoords( const float scrollSpeed[2], float *st )
 	adjustedScrollS = adjustedScrollS - floor( adjustedScrollS );
 	adjustedScrollT = adjustedScrollT - floor( adjustedScrollT );
 
-	for ( i = 0; i < tess.numVertexes; i++, st += 2 )
+	if (!r_gpu_uv_transform->integer)
 	{
-		st[0] += adjustedScrollS;
-		st[1] += adjustedScrollT;
+		for ( i = 0; i < tess.numVertexes; i++, st += 2 )
+		{
+			st[0] += adjustedScrollS;
+			st[1] += adjustedScrollT;
+		}
+	}
+	else
+	{
+		float ds = adjustedScrollS;
+		float dt = adjustedScrollT;
+		float matScroll[16] = {
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			ds,   dt,   0.0f, 1.0f
+		};
+		RB_MultiplyTextureMatrix(matScroll);
 	}
 }
 
@@ -993,15 +1027,28 @@ void RB_CalcScrollTexCoords( const float scrollSpeed[2], float *st )
 */
 void RB_CalcTransformTexCoords( const texModInfo_t *tmi, float *st  )
 {
-	int i;
-
-	for ( i = 0; i < tess.numVertexes; i++, st += 2 )
+	if (!r_gpu_uv_transform->integer)
 	{
-		float s = st[0];
-		float t = st[1];
+		int i;
 
-		st[0] = s * tmi->matrix[0][0] + t * tmi->matrix[1][0] + tmi->translate[0];
-		st[1] = s * tmi->matrix[0][1] + t * tmi->matrix[1][1] + tmi->translate[1];
+		for ( i = 0; i < tess.numVertexes; i++, st += 2 )
+		{
+			float s = st[0];
+			float t = st[1];
+
+			st[0] = s * tmi->matrix[0][0] + t * tmi->matrix[1][0] + tmi->translate[0];
+			st[1] = s * tmi->matrix[0][1] + t * tmi->matrix[1][1] + tmi->translate[1];
+		}
+	}
+	else
+	{
+		float matTransform[16] = {
+			tmi->matrix[0][0], tmi->matrix[0][1], 0.0f, 0.0f,
+			tmi->matrix[1][0], tmi->matrix[1][1], 0.0f, 0.0f,
+			0.0f,              0.0f,              1.0f, 0.0f,
+			tmi->translate[0], tmi->translate[1], 0.0f, 1.0f
+		};
+		RB_MultiplyTextureMatrix(matTransform);
 	}
 }
 

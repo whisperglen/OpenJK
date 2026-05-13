@@ -1223,6 +1223,7 @@ Ghoul2 Insert End
 extern	cvar_t	*r_environmentMapping;
 
 extern  cvar_t  *r_novertex_colors;
+extern  cvar_t  *r_gpu_uv_transform;
 //====================================================================
 
 
@@ -1463,6 +1464,8 @@ void RB_AddQuadStamp( vec3_t origin, vec3_t left, vec3_t up, byte *color );
 void RB_AddQuadStampExt( vec3_t origin, vec3_t left, vec3_t up, byte *color, float s1, float t1, float s2, float t2 );
 
 void RB_ShowImages( void );
+
+void RB_MultiplyTextureMatrix(float* mat);
 
 /*
 ============================================================
