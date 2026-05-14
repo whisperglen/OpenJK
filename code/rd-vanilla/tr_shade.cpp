@@ -1815,8 +1815,9 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 				break;
 
 			case TMOD_TURBULENT:
-				RB_CalcTurbulentTexCoords( &pStage->bundle[b].texMods[tm].wave,
-						                 ( float * ) tess.svars.texcoords[b] );
+				if ( r_turbulentTextures->integer )
+					RB_CalcTurbulentTexCoords( &pStage->bundle[b].texMods[tm].wave,
+							                 ( float * ) tess.svars.texcoords[b] );
 				break;
 
 			case TMOD_ENTITY_TRANSLATE:
