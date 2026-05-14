@@ -183,10 +183,11 @@ cvar_t	*sp_language;			// JK2
 cvar_t	*com_buildScript;
 
 cvar_t	*r_environmentMapping;
-cvar_t *r_screenshotJpegQuality;
+cvar_t  *r_screenshotJpegQuality;
 
 cvar_t  *r_novertex_colors;
 cvar_t  *r_gpu_uv_transform;
+cvar_t  *r_turbulentTextures;
 
 #if !defined(__APPLE__)
 PFNGLSTENCILOPSEPARATEPROC qglStencilOpSeparate;
@@ -1688,6 +1689,7 @@ Ghoul2 Insert End
 
 	r_novertex_colors = ri.Cvar_Get( "r_novertex_colors", "0", CVAR_ARCHIVE );
 	r_gpu_uv_transform = ri.Cvar_Get("r_gpu_uv_transform", "0", CVAR_ARCHIVE);
+	r_turbulentTextures = ri.Cvar_Get("r_turbulentTextures", "1", CVAR_ARCHIVE);
 
 	for ( size_t i = 0; i < numCommands; i++ )
 		ri.Cmd_AddCommand( commands[i].cmd, commands[i].func );
