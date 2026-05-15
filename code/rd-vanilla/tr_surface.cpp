@@ -933,6 +933,8 @@ void RB_SurfacePolychain( srfPoly_t *p ) {
 		tess.numIndexes += 3;
 	}
 
+	memset(&tess.normal[tess.numVertexes], 0, p->numVerts * sizeof(vec4_t));
+
 	tess.numVertexes = numv;
 }
 

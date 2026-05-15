@@ -2216,6 +2216,8 @@ void RB_StageIteratorGeneric( void )
 	// lock XYZ
 	//
 	qglVertexPointer (3, GL_FLOAT, 16, input->xyz);	// padded for SIMD
+	qglEnableClientState ( GL_NORMAL_ARRAY );
+	qglNormalPointer ( GL_FLOAT, sizeof(input->normal[0]), input->normal );
 
 	if (qglLockArraysEXT)
 	{
@@ -2236,6 +2238,8 @@ void RB_StageIteratorGeneric( void )
 	// call shader function
 	//
 	RB_IterateStagesGeneric( input );
+
+	qglDisableClientState ( GL_NORMAL_ARRAY );
 
 	//
 	// now do any dynamic lighting needed
