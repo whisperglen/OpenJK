@@ -1582,7 +1582,7 @@ static void ComputeColors( shaderStage_t *pStage, alphaGen_t forceAlphaGen, colo
 		RB_CalcAlphaFromOneMinusEntity( ( unsigned char * ) tess.svars.colors );
 		break;
 	case AGEN_VERTEX:
-		if ( forceRGBGen != CGEN_VERTEX ) {
+		if ( forceRGBGen != CGEN_VERTEX || colorskip ) {
 			for ( i = 0; i < tess.numVertexes; i++ ) {
 				tess.svars.colors[i][3] = tess.vertexColors[i][3];
 			}
