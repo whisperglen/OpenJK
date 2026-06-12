@@ -32,6 +32,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../rd-common/tr_font.h"
 #include "tr_WorldEffects.h"
 
+#define RMX_ADD_IMPL
+#define RMX_GET_PROC_ADDRESS(MOD,NAME) ri.GL_GetProcAddress((NAME))
+#include "qindiegl/qindie_rmx.h"
+
+static gameparamret_t RMX_implement_api(gameops_t op, gameparam_t p0, gameparam_t p1, gameparam_t p2);
+static void jk_flashlight_toggle(void);
+
 glconfig_t	glConfig;
 glstate_t	glState;
 window_t	window;
@@ -188,6 +195,8 @@ cvar_t  *r_screenshotJpegQuality;
 cvar_t  *r_novertex_colors;
 cvar_t  *r_gpu_uv_transform;
 cvar_t  *r_turbulentTextures;
+cvar_t  *r_rmx_coronas;
+cvar_t  *r_rmx_dynamiclight;
 
 #if !defined(__APPLE__)
 PFNGLSTENCILOPSEPARATEPROC qglStencilOpSeparate;
@@ -740,6 +749,8 @@ static void InitOpenGL( void )
 		// set default state
 		GL_SetDefaultState();
 	}
+
+	rmx_interface_init(NULL);
 }
 
 /*
@@ -1691,8 +1702,14 @@ Ghoul2 Insert End
 	r_gpu_uv_transform = ri.Cvar_Get("r_gpu_uv_transform", "0", CVAR_ARCHIVE);
 	r_turbulentTextures = ri.Cvar_Get("r_turbulentTextures", "1", CVAR_ARCHIVE);
 
+	r_rmx_coronas = ri.Cvar_Get("r_rmx_coronas", "0", CVAR_ARCHIVE_ND);
+	r_rmx_dynamiclight = ri.Cvar_Get("r_rmx_dynamiclight", "0", CVAR_ARCHIVE_ND);
+
+
 	for ( size_t i = 0; i < numCommands; i++ )
 		ri.Cmd_AddCommand( commands[i].cmd, commands[i].func );
+
+	ri.Cmd_AddCommand( "rmx_flashlight_toggle", jk_flashlight_toggle);
 }
 
 // need to do this hackery so ghoul2 doesn't crash the game because of ITS hackery...
@@ -1776,6 +1793,8 @@ void R_Init( void ) {
 	R_InitWorldEffects();
 	R_InitFonts();
 
+	rmx_set_game_api(RMX_implement_api);
+
 	err = qglGetError();
 	if ( err != GL_NO_ERROR )
 		ri.Printf (PRINT_ALL, "glGetError() = 0x%x\n", err);
@@ -1796,6 +1815,8 @@ extern void R_ShutdownWorldEffects(void);
 void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 	for ( size_t i = 0; i < numCommands; i++ )
 		ri.Cmd_RemoveCommand( commands[i].cmd );
+
+	ri.Cmd_RemoveCommand( "rmx_flashlight_toggle" );
 
 	if ( r_DynamicGlow && r_DynamicGlow->integer )
 	{
@@ -2187,4 +2208,46 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *
 	//Swap_Init();
 
 	return &re;
+}
+
+static gameparamret_t __cdecl RMX_implement_api(gameops_t op, gameparam_t p0, gameparam_t p1, gameparam_t p2)
+{
+	gameparamret_t ret = { 0 };
+
+	switch (op)
+	{
+	case OP_GETVAR: {
+		cvar_t* cv = ri.Cvar_Get(p0.strval, "0", 0);
+		ret.intval = cv->integer;
+		break;
+	}
+	case OP_SETVAR:
+		ri.Cvar_Set(p0.strval, p1.strval);
+		break;
+	case OP_EXECMD:
+		ri.Cmd_ExecuteString(p0.strval);
+		break;
+	case OP_CONPRINT: {
+		ri.Printf(PRINT_ALL, "%s", p1.strval);
+		break;
+	}
+	case OP_DEACTMOUSE: {
+		//IN_DeactivateMouse is automatically called when in_mouse changes
+		break;
+	}
+	case OP_GETNORMALSTHRESHVAL:
+		ret.pfltval = 0;
+		break;
+	default:
+		ri.Printf(PRINT_ALL, "Unsupported OP:%d\n", op);
+		break;
+	}
+
+	return ret;
+}
+
+static void jk_flashlight_toggle(void)
+{
+	rmx_flashlight_enable(-1);
+	ri.Cmd_ExecuteString("play sound/movers/switches/switch1.mp3");
 }

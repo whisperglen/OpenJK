@@ -1225,6 +1225,9 @@ extern	cvar_t	*r_environmentMapping;
 extern  cvar_t  *r_novertex_colors;
 extern  cvar_t  *r_gpu_uv_transform;
 extern  cvar_t  *r_turbulentTextures;
+
+extern  cvar_t  *r_rmx_coronas;
+extern  cvar_t  *r_rmx_dynamiclight;
 //====================================================================
 
 

@@ -25,11 +25,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../server/exe_headers.h"
 
 #include "tr_local.h"
+#include "qindiegl/qindie_rmx.h"
 
 int			r_firstSceneDrawSurf;
 
 int			r_numdlights;
 int			r_firstSceneDlight;
+int			r_rmxdlights;
 
 int			r_numentities;
 int			r_firstSceneEntity;
@@ -56,6 +58,7 @@ void R_InitNextFrame( void ) {
 
 	r_numdlights = 0;
 	r_firstSceneDlight = 0;
+	r_rmxdlights = 0;
 
 	r_numentities = 0;
 	r_firstSceneEntity = 0;
@@ -240,6 +243,13 @@ void RE_AddLightToScene( const vec3_t org, float intensity, float r, float g, fl
 	if ( !tr.registered ) {
 		return;
 	}
+	if (r_rmx_dynamiclight->value)
+	{
+		vec3_t color = { r, g, b };
+		//float radius = intensity * r_dlightScale->value;
+		rmx_light_add(LIGHT_DYNAMIC, r_rmxdlights, org, org, color, intensity);
+		r_rmxdlights++;
+	}
 	if ( r_numdlights >= MAX_DLIGHTS ) {
 		return;
 	}
@@ -400,6 +410,12 @@ void RE_RenderScene( const refdef_t *fd ) {
 	VectorCopy( fd->viewaxis[2], parms.ori.axis[2] );
 
 	VectorCopy( fd->vieworg, parms.pvsOrigin );
+
+	const float identity[9] = { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
+	if (0 != memcmp(identity, fd->viewaxis, sizeof(identity)))
+	{
+		rmx_setplayerpos(fd->vieworg, fd->viewaxis[0]);
+	}
 
 	recursivePortalCount = 0;
 	R_RenderView( &parms );

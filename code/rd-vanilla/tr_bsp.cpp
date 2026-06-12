@@ -28,6 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_common.h"
 #include "tr_local.h"
+#include "qindiegl/qindie_rmx.h"
 
 /*
 
@@ -1336,6 +1337,8 @@ void RE_LoadWorldMap_Actual( const char *name, world_t &worldData, int index ) {
 	if ( tr.worldMapLoaded && !index ) {
 		Com_Error( ERR_DROP, "ERROR: attempted to redundantly load world map\n" );
 	}
+
+	rmx_begin_loading_map(name);
 
 	// set default sun direction to be used if it isn't
 	// overridden by a shader

@@ -25,6 +25,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../server/exe_headers.h"
 
 #include "tr_local.h"
+#include "qindiegl/qindie_rmx.h"
 
 
 /*
@@ -475,6 +476,17 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 		{
 			cmd->buffer = (int)GL_BACK;
 		}
+	}
+
+	if (r_rmx_dynamiclight->modified)
+	{
+		r_rmx_dynamiclight->modified = qfalse;
+		rmx_lights_clear(LIGHT_DYNAMIC);
+	}
+	if (r_rmx_coronas->modified)
+	{
+		r_rmx_coronas->modified = qfalse;
+		rmx_lights_clear(LIGHT_CORONA);
 	}
 }
 
