@@ -318,11 +318,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - artifact_dir: OpenJK-windows-x86-Release-Non-Portable/JediAcademy
+          - artifact_dir: OpenJK-windows-x86-Release-Non-Portable
             artifact_name: OpenJK-windows-x86.zip
             zip: true
 
-          - artifact_dir: OpenJK-windows-x86_64-Release-Non-Portable/JediAcademy
+          - artifact_dir: OpenJK-windows-x86_64-Release-Non-Portable
             artifact_name: OpenJK-windows-x86_64.zip
             zip: true
 
@@ -342,11 +342,11 @@ jobs:
             # artifact_name: OpenJK-macos-arm64.tar.gz
             # zip: false
 
-          - artifact_dir: OpenJO-windows-x86-Release-Non-Portable/JediOutcast
+          - artifact_dir: OpenJO-windows-x86-Release-Non-Portable
             artifact_name: OpenJO-windows-x86.zip
             zip: true
 
-          - artifact_dir: OpenJO-windows-x86_64-Release-Non-Portable/JediOutcast
+          - artifact_dir: OpenJO-windows-x86_64-Release-Non-Portable
             artifact_name: OpenJO-windows-x86_64.zip
             zip: true
 
