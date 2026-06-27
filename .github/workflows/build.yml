@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [master]
+    tags:
+      - 'v*'
     paths-ignore:
       - "**.md"
       - ".gitignore"
@@ -310,7 +312,8 @@ jobs:
             *.tar.gz
 
   create-release:
-    if: github.event_name == 'release'
+    #if: github.event_name == 'release'
+    if: github.event_name == 'release' || (github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v'))
     # needs: [msvc, ubuntu, macos]
     needs: [msvc]
     runs-on: ubuntu-22.04
